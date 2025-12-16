@@ -1,149 +1,218 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
+  <!-- Informasi dasar halaman -->
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- Judul tab browser -->
   <title>AI Scanner Hardware Komputer</title>
+
+  <!-- CSS eksternal (style utama) -->
   <link rel="stylesheet" href="style.css" />
 
-  <!-- Library -->
+  <!-- Library TensorFlow + Teachable Machine + html2canvas -->
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.9.0/dist/tf.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8/dist/teachablemachine-image.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 
+  <!-- CSS tambahan cepat di dalam file ini -->
   <style>
-    /* 📸 Layout kamera dan info */
+    /* 🌈 Gaya umum body halaman */
+    body {
+      font-family: "Poppins", sans-serif;
+      background: linear-gradient(to bottom, #1ec3f5, #f5f3f5);
+      color: #333;
+      margin: 0;
+      padding: 20px;
+      text-align: center;
+      transition: background 0.5s, color 0.5s;
+    }
+
+    /* 🌙 Mode gelap (class ini ditambah/dihapus lewat JS) */
+    body.dark-mode {
+      background: radial-gradient(circle at top, #0a0a0a, #1a1a1a 70%, #000);
+      color: #e0ffff;
+      text-shadow: 0 0 10px #00ffffaa;
+    }
+
+    /* 📸 Container kamera + info di samping */
     .camera-container {
       display: flex;
       justify-content: center;
       align-items: flex-start;
       gap: 20px;
       flex-wrap: wrap;
-      margin-top: 20px;
-      position: relative;
-      z-index: 1;
+      margin-top: 60px;
     }
 
+    /* Kotak tempat canvas webcam / snapshot */
     #webcam {
       width: 480px;
       border-radius: 10px;
       box-shadow: 0 0 10px rgba(0,0,0,0.2);
-      background: white;
+      background: rgb(253, 253, 253);
       padding: 10px;
-      position: relative;
-      z-index: 1;
     }
 
-    /* 🧠 Info box */
+    /* Kotak info komponen di samping kamera */
     .info-container {
       width: 250px;
-      background: white;
+      background: rgb(243, 244, 245);
       padding: 15px;
       border-radius: 10px;
       box-shadow: 0 4px 8px rgba(0,0,0,0.1);
       text-align: left;
-      animation: fadeIn 0.3s ease-in-out;
-      position: relative;
-      z-index: 10;
-      pointer-events: auto;
-    }
-
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(10px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    #popupTitle {
-      font-weight: bold;
-      color: #007BFF;
-      margin-bottom: 8px;
-    }
-
-    /* 🔧 Perbaikan transisi infoBox */
-    #infoBox {
-      transition: all 0.4s ease;
-      overflow: hidden;
-    }
-
-    #infoBox.expanded {
-      width: 360px !important;
-    }
-
-    /* 🎯 Pastikan elemen lain tetap responsif */
-    #label-container {
-      text-align: center;
-      margin-top: 10px;
-    }
-
-    #status {
-      font-size: 22px;
-      margin-top: 10px;
-      font-weight: bold;
-      color: lime;
-      text-align: center;
-    }
-
-    #info {
-      margin-top: 10px;
-      font-size: 18px;
-      color: #333;
-      text-align: center;
-    }
-
-    .button-container {
-      margin-top: 20px;
-      text-align: center;
-    }
-
-    button {
-      margin: 5px;
-      padding: 10px 16px;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      font-size: 16px;
-      transition: 0.2s;
-    }
-
-    #startBtn { background: #007BFF; color: white; }
-    #soundBtn { background: #ffc107; color: black; }
-    #captureBtn { background: #28a745; color: white; }
-
-    button:hover {
-      opacity: 0.9;
-      transform: scale(1.03);
+      display: none; /* default disembunyikan, muncul kalau ada deteksi */
     }
   </style>
 </head>
 
 <body>
-  <h1 style="text-align:center;">🧠 AI Scanner Hardware Komputer</h1>
 
-  <div class="camera-container">
-    <!-- 🎥 Kamera -->
-    <div id="webcam"></div>
+  <!-- ================================
+       POPUP TENTANG PROYEK (MODAL)
+       ================================ -->
+  <div id="aboutPopup" style="
+    display:none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgb(249, 251, 252);
+    color: black;
+    padding: 20px;
+    border-radius: 12px;
+    width: 300px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    z-index: 10000;
+    text-align: left;
+  ">
+    <h2>Tentang Proyek</h2>
+    <p>Aplikasi AI Scanner Hardware Umum Komputer.</p>
+    <p>Dikembangkan oleh Elisa Anggun Septiyaningrum, XII TKJ 1.</p>
 
-    <!-- 🧠 Info Box -->
-    <div class="info-container" id="infoBox" style="display:none;">
-      <h3 id="popupTitle"></h3>
-      <p id="popupText"></p>
-      <button id="closeInfo"
-        style="background:#28a745; color:white; border:none; padding:8px 12px; border-radius:6px; cursor:pointer;">
-        ℹ Info Lengkap
-      </button>
+    <!-- Tombol untuk menutup popup tentang proyek -->
+    <button id="closeAbout" style="
+      margin-top: 15px;
+      padding: 10px 15px;
+      border: none;
+      background: #007bff;
+      color: white;
+      border-radius: 8px;
+      cursor: pointer;
+    ">
+      Tutup
+    </button>
+  </div>
+
+  <!-- ================================
+       HEADER KANAN ATAS (TEMA + ABOUT)
+       ================================ -->
+  <div class="header-top">
+    <!-- Tombol ganti mode terang/gelap -->
+    <button id="themeToggle">🌙 Mode Gelap</button>
+    <!-- Tombol munculkan popup tentang proyek -->
+    <button id="aboutBtn">ℹ Tentang Proyek</button>
+  </div>
+
+  <!-- Judul utama halaman -->
+  <h1>🧠 AI Scanner Hardware Umum Komputer</h1>
+
+  <!-- ==========================================
+       AREA YANG AKAN DI-CAPTURE DENGAN html2canvas
+       (kamera + info box + preview upload)
+       ========================================== -->
+  <div id="capture-area">
+    <div class="camera-container">
+
+      <!-- ==================
+           AREA WEBCAM
+           ==================
+           - Diisi canvas/video oleh script.js (fungsi init)
+           - Juga dipakai untuk menempel snapshot hasil deteksi
+      -->
+      <div id="webcam"></div>
+
+      <!-- ============================================
+           PREVIEW UNTUK FOTO YANG DI-UPLOAD DARI FILE
+           ============================================
+           - Default: display:none (disembunyikan)
+           - Saat user upload foto → JS menampilkan <img> ini
+           - Ukurannya sama lebar dengan webcam (480px)
+      -->
+      <div id="uploadedImageArea" style="
+        width: 480px;
+        display:none;
+        background:white;
+        padding:10px;
+        border-radius:10px;
+        box-shadow:0 0 10px rgba(0,0,0,0.2);
+      ">
+        <img id="uploadedPreview" style="width:100%; border-radius:10px;">
+      </div>
+
+      <!-- =================================
+           INFO BOX TENTANG KOMPONEN TERDETEKSI
+           =================================
+           - Menampilkan nama komponen (popupTitle)
+           - Menampilkan penjelasan singkat/panjang (popupText)
+           - Tombol closeInfo untuk toggle info lengkap
+      -->
+      <div class="info-container" id="infoBox">
+        <h3 id="popupTitle"></h3>
+        <p id="popupText"></p>
+        <button id="closeInfo" style="background:#28a745;color:white;">
+          ℹ Info Lengkap
+        </button>
+      </div>
+
     </div>
   </div>
 
-  <div id="label-container"></div>
-  <div id="status"></div>
-  <div id="info"></div>
+  <!-- ====================================
+       BAGIAN DI LUAR CAPTURE (tidak ikut foto)
+       ==================================== -->
 
+  <!-- Menampilkan kelas/label + prosentase dari model -->
+  <div id="label-container"></div>
+
+  <!-- Menampilkan status seperti: "CPU terdeteksi" -->
+  <div id="status"></div>
+
+  <!-- ==========================
+       TOMBOL-TOMBOL KONTROL BAWAH
+       ========================== -->
   <div class="button-container">
+    <!-- Mulai scan kamera dan deteksi -->
     <button id="startBtn">▶ Scan</button>
-    <button id="soundBtn">🔊 Putar Suara</button>
+
+    <!-- Menghidupkan / mematikan suara penjelasan -->
+    <button id="soundBtn">🔇 Matikan Suara</button>
+
+    <!-- Capture area (kamera + info) menjadi gambar PNG -->
     <button id="captureBtn">📸 Capture</button>
+
+    <!-- Tombol membuka dialog pilih file gambar -->
+    <button id="uploadBtn">📁 Unggah Foto</button>
+
+    <!-- Input file asli (disembunyikan, dipicu lewat tombol uploadBtn) -->
+    <input type="file" id="imageUpload" accept="image/*" style="display:none;">
   </div>
 
+  <!-- ==========================
+       FOOTER / KREDIT PROYEK
+       ========================== -->
+  <footer>
+    <p>Dikembangkan oleh <b>Elisa Anggun Septiyaningrum</b></p>
+    <p><b>XII TKJ 1</b> | SMKN 1 WONOSEGORO 💻</p>
+  </footer>
+
+  <!-- ==========================
+       FILE JAVASCRIPT UTAMA
+       (semua logika ada di script.js)
+       ========================== -->
   <script src="script.js"></script>
 </body>
 </html>
+
